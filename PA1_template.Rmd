@@ -1,0 +1,97 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+*Loading and processing data to a suitable format for analysis*
+```{r}
+unzip('activity.zip')
+data <- read.csv('activity.csv', colClasses = c('integer', 'Date', 'factor'))
+data$month <- as.numeric(format(data$date, '%m'))
+clean <- na.omit(data)
+rownames(clean) <- 1:nrow(clean)
+```
+
+
+## What is mean total number of steps taken per day?
+*Total number of steps taken per day*
+```{r}
+total_steps <- aggregate(clean$steps, list(Date = clean$date), FUN  = 'sum')$x
+total_steps
+```
+*Histogram of total steps taken per day*
+```{r}
+library(ggplot2)
+ggplot(clean, aes(date, steps)) + geom_bar(stat = 'identity' ) + labs(title = 'histogram of total number of steps taken per day', x = 'Date', y = 'Number of steps')
+```
+*Mean of total steps*
+```{r}
+ ogmean <- mean(total_steps)
+ogmean
+```
+ *Median of total steps*
+```{r}
+ogmedian <- median(total_steps)
+ogmedian
+```
+## What is the average daily activity pattern?
+*Time series plot of the 5-minute interval and the average number of steps taken, averaged across all days
+```{r}
+Average_tests <- aggregate(clean$steps, list(interval = as.numeric(as.character(clean$interval))), FUN = 'mean')
+names(Average_tests)[2] <- 'meanofsteps'
+ggplot(Average_tests, aes(interval, meanofsteps)) + geom_line(color = 'black') + labs(title = "Time Series Plot of the 5-minute Interval", x = "5-minute intervals", y = "Average Number of Steps Taken")
+```
+```
+## Imputing missing values
+*Total number of missing values in the data set*
+```{r}
+sum(is.na(data))
+```
+*Replacing all missing values with the median and creating a new data set containing these new values*
+```{r}
+newData <- data 
+for (i in 1:nrow(newData)) {
+  if (is.na(newData$steps[i])) {
+    newData$steps[i] <- Average_tests[which(newData$interval[i] == Average_tests$interval), ]$meanofsteps
+  }
+}
+
+```
+*Creating a histogram with the new data, which has the missing values filled in *
+```{r}
+ggplot(newData, aes(date, steps)) + geom_bar(stat = "identity") + labs(title = "Histogram of Total Number of Steps Taken Each Day (no missing data)", x = "Date", y = "Total number of steps")
+```
+*Difference in the values of mean and median as compared to previous data*
+```{r}
+
+newTotalSteps <- aggregate(newData$steps,list(Date = newData$date), FUN = "sum")$x
+
+newmean <- mean(newTotalSteps)
+newmean
+newmedian <- median(newTotalSteps)
+newmedian
+
+newmean - ogmean
+newmedian - ogmedian
+```
+## Are there differences in activity patterns between weekdays and weekends?
+*Creating an new factor variable indication whether a day is a weekend or weekday
+```{r}
+newData$weekdays <- factor(format(newData$date, "%A"))
+levels(newData$weekdays)
+levels(newData$weekdays) <- list(weekday = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), weekend = c("Saturday", "Sunday"))
+levels(newData$weekdays)
+table(newData$weekdays)
+```
+*Creating a plot of the 5-Minute interval and average number of steps taken, avergaed across weekdays or weekend days*
+```{r}
+avgSteps <- aggregate(newData$steps,list(interval = as.numeric(as.character(newData$interval)) , weekdays = newData$weekdays), FUN = "mean")
+names(avgSteps)[3] <- "meanOfSteps"
+library(lattice)
+xyplot(avgSteps$meanOfSteps ~ avgSteps$interval | avgSteps$weekdays,layout = c(1, 2), type = "l", xlab = "Interval", ylab = "Number of steps")
+```
+
